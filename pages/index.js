@@ -112,6 +112,7 @@ export default function Home() {
     setTags(tags.includes(tag) 
       ? tags.filter(t => t !== tag) 
       : [...tags, tag]
+    );
   };
 
   // Save/update block
