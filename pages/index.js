@@ -40,16 +40,7 @@ export default function Home() {
         const blocksData = await blocksRes.json();
         if (blocksData.content) {
           const parsedBlocks = JSON.parse(atob(blocksData.content));
-          // Convert any local image paths to raw GitHub URLs
-          const blocksWithCorrectUrls = parsedBlocks.map(block => ({
-            ...block,
-            images: block.images?.map(img => 
-              img.includes('/data/images/') 
-                ? `https://raw.githubusercontent.com/${process.env.NEXT_PUBLIC_GITHUB_OWNER}/${process.env.NEXT_PUBLIC_GITHUB_REPO}/${process.env.NEXT_PUBLIC_GITHUB_BRANCH}/${img}`
-                : img
-            )
-          }));
-          setBlocks(blocksWithCorrectUrls);
+          setBlocks(parsedBlocks);
         }
 
         // Load tags data
@@ -66,7 +57,7 @@ export default function Home() {
     fetchData();
   }, []);
 
-  // Helper function to properly encode text
+  // Helper function to encode text
   const encodeText = (text) => {
     return text
       .replace(/\\/g, '\\\\')
@@ -110,14 +101,17 @@ export default function Home() {
   };
 
   // Image handling
-  const handleImageUpload = (e) => setImages({ ...images, file: e.target.files[0] });
+  const handleImageUpload = (e) => {
+    if (e.target.files && e.target.files[0]) {
+      setImages({ ...images, file: e.target.files[0] });
+    }
+  };
 
   // Tag handling
   const handleTagToggle = (tag) => {
     setTags(tags.includes(tag) 
       ? tags.filter(t => t !== tag) 
       : [...tags, tag]
-    );
   };
 
   // Save/update block
@@ -143,26 +137,46 @@ export default function Home() {
 
     // Handle image upload
     if (images.file) {
-      const formData = new FormData();
-      formData.append('file', images.file);
-      formData.append('path', `data/images/${images.file.name}`);
-      
-      try {
-        await fetch('/api/github/upload', {
-          method: 'POST',
-          body: formData
-        });
-        // Store just the relative path - we'll convert to full URL when displaying
-        blockData.images = [`data/images/${images.file.name}`];
-      } catch (error) {
-        console.error('Error uploading image:', error);
-        alert('Failed to upload image. Please try again.');
-        return;
-      }
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        const base64Data = reader.result.split(',')[1];
+        try {
+          const uploadRes = await fetch('/api/github?upload=true', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              file: base64Data,
+              path: `data/images/${images.file.name}`,
+              message: `Upload image ${images.file.name}`
+            }),
+          });
+
+          const uploadData = await uploadRes.json();
+          if (uploadRes.ok) {
+            blockData.images = [
+              `https://raw.githubusercontent.com/${process.env.NEXT_PUBLIC_GITHUB_OWNER}/${process.env.NEXT_PUBLIC_GITHUB_REPO}/${process.env.NEXT_PUBLIC_GITHUB_BRANCH}/data/images/${images.file.name}`
+            ];
+            completeSave(blockData);
+          } else {
+            throw new Error(uploadData.error || 'Failed to upload image');
+          }
+        } catch (error) {
+          console.error('Upload error:', error);
+          alert(`Gagal upload gambar: ${error.message}`);
+        }
+      };
+      reader.readAsDataURL(images.file);
+      return;
     } else if (images.url.trim() !== '') {
       blockData.images = [images.url];
     }
 
+    completeSave(blockData);
+  };
+
+  const completeSave = async (blockData) => {
     // Update or add block
     const updatedBlocks = editingId
       ? blocks.map(b => b.id === editingId ? blockData : b)
@@ -188,7 +202,7 @@ export default function Home() {
       }
     } catch (error) {
       console.error('Error saving data:', error);
-      alert('Failed to save data. Please try again.');
+      alert('Gagal menyimpan data. Silakan coba lagi.');
     }
   };
 
@@ -219,7 +233,7 @@ export default function Home() {
       setTitle(block.title);
       setSteps(block.steps.length > 0 ? block.steps : [{ text: '', link: '' }]);
       
-      // Handle image URL - convert from stored path to full URL if needed
+      // Handle image URL
       const imageUrl = block.images?.[0] || '';
       setImages({ 
         file: null, 
@@ -246,7 +260,7 @@ export default function Home() {
 
   // Delete block
   const deleteBlock = async (id) => {
-    if (confirm('Are you sure you want to delete this block?')) {
+    if (confirm('Apakah Anda yakin ingin menghapus blok ini?')) {
       const updatedBlocks = blocks.filter(b => b.id !== id);
       
       try {
@@ -268,7 +282,7 @@ export default function Home() {
         }
       } catch (error) {
         console.error('Error deleting block:', error);
-        alert('Failed to delete block. Please try again.');
+        alert('Gagal menghapus blok. Silakan coba lagi.');
       }
     }
   };
@@ -313,6 +327,7 @@ export default function Home() {
 
   // Function to get display URL for an image
   const getImageDisplayUrl = (imgPath) => {
+    if (!imgPath) return '';
     return imgPath.includes('data/images/')
       ? `https://raw.githubusercontent.com/${process.env.NEXT_PUBLIC_GITHUB_OWNER}/${process.env.NEXT_PUBLIC_GITHUB_REPO}/${process.env.NEXT_PUBLIC_GITHUB_BRANCH}/${imgPath}`
       : imgPath;
