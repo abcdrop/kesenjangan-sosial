@@ -39,7 +39,17 @@ export default function Home() {
         const blocksRes = await fetch('/api/github?path=data/airdrop/data.json');
         const blocksData = await blocksRes.json();
         if (blocksData.content) {
-          setBlocks(JSON.parse(atob(blocksData.content)));
+          const parsedBlocks = JSON.parse(atob(blocksData.content));
+          // Convert any local image paths to raw GitHub URLs
+          const blocksWithCorrectUrls = parsedBlocks.map(block => ({
+            ...block,
+            images: block.images?.map(img => 
+              img.includes('/data/images/') 
+                ? `https://raw.githubusercontent.com/${process.env.NEXT_PUBLIC_GITHUB_OWNER}/${process.env.NEXT_PUBLIC_GITHUB_REPO}/${process.env.NEXT_PUBLIC_GITHUB_BRANCH}/${img}`
+                : img
+            )
+          }));
+          setBlocks(blocksWithCorrectUrls);
         }
 
         // Load tags data
@@ -55,6 +65,19 @@ export default function Home() {
 
     fetchData();
   }, []);
+
+  // Helper function to properly encode text
+  const encodeText = (text) => {
+    return text
+      .replace(/\\/g, '\\\\')
+      .replace(/"/g, '\\"')
+      .replace(/\n/g, '\\n')
+      .replace(/\r/g, '\\r')
+      .replace(/\t/g, '\\t')
+      .replace(/[\u007F-\uFFFF]/g, (chr) => {
+        return "\\u" + ("0000" + chr.charCodeAt(0).toString(16)).substr(-4);
+      });
+  };
 
   // Step management
   const addStep = () => setSteps([...steps, { text: '', link: '' }]);
@@ -103,9 +126,14 @@ export default function Home() {
     
     const blockData = {
       id: editingId || Date.now().toString(),
-      title,
-      steps: steps.filter(step => step.text.trim() !== ''),
-      information: information.split('\n').filter(line => line.trim() !== ''),
+      title: encodeText(title),
+      steps: steps.filter(step => step.text.trim() !== '').map(step => ({
+        text: encodeText(step.text),
+        link: step.link
+      })),
+      information: information.split('\n')
+        .filter(line => line.trim() !== '')
+        .map(line => encodeText(line)),
       tags,
       sourceLinks: sourceLinks.filter(link => link.trim() !== ''),
       visibility,
@@ -124,9 +152,12 @@ export default function Home() {
           method: 'POST',
           body: formData
         });
-        blockData.images = [`/data/images/${images.file.name}`];
+        // Store just the relative path - we'll convert to full URL when displaying
+        blockData.images = [`data/images/${images.file.name}`];
       } catch (error) {
         console.error('Error uploading image:', error);
+        alert('Failed to upload image. Please try again.');
+        return;
       }
     } else if (images.url.trim() !== '') {
       blockData.images = [images.url];
@@ -152,9 +183,12 @@ export default function Home() {
       if (res.ok) {
         setBlocks(updatedBlocks);
         resetForm();
+      } else {
+        throw new Error('Failed to save data');
       }
     } catch (error) {
       console.error('Error saving data:', error);
+      alert('Failed to save data. Please try again.');
     }
   };
 
@@ -184,7 +218,16 @@ export default function Home() {
     if (block) {
       setTitle(block.title);
       setSteps(block.steps.length > 0 ? block.steps : [{ text: '', link: '' }]);
-      setImages({ file: null, url: block.images?.[0] || '' });
+      
+      // Handle image URL - convert from stored path to full URL if needed
+      const imageUrl = block.images?.[0] || '';
+      setImages({ 
+        file: null, 
+        url: imageUrl.includes('data/images/')
+          ? `https://raw.githubusercontent.com/${process.env.NEXT_PUBLIC_GITHUB_OWNER}/${process.env.NEXT_PUBLIC_GITHUB_REPO}/${process.env.NEXT_PUBLIC_GITHUB_BRANCH}/${imageUrl}`
+          : imageUrl
+      });
+      
       setInformation(block.information.join('\n'));
       setTags(block.tags || []);
       setSourceLinks(block.sourceLinks.length > 0 ? block.sourceLinks : ['']);
@@ -220,9 +263,12 @@ export default function Home() {
         if (res.ok) {
           setBlocks(updatedBlocks);
           if (editingId === id) resetForm();
+        } else {
+          throw new Error('Failed to delete block');
         }
       } catch (error) {
         console.error('Error deleting block:', error);
+        alert('Failed to delete block. Please try again.');
       }
     }
   };
@@ -264,6 +310,13 @@ export default function Home() {
     const matchesVisibility = !showHiddenOnly || block.visibility === 'hide';
     return matchesSearch && matchesTags && matchesVisibility;
   });
+
+  // Function to get display URL for an image
+  const getImageDisplayUrl = (imgPath) => {
+    return imgPath.includes('data/images/')
+      ? `https://raw.githubusercontent.com/${process.env.NEXT_PUBLIC_GITHUB_OWNER}/${process.env.NEXT_PUBLIC_GITHUB_REPO}/${process.env.NEXT_PUBLIC_GITHUB_BRANCH}/${imgPath}`
+      : imgPath;
+  };
 
   return (
     <div className="container">
@@ -406,26 +459,25 @@ export default function Home() {
                 <input
                   type="text"
                   className="input"
-                  placeholder="Image URL"
+                  placeholder="Image URL (use GitHub raw URL)"
                   value={images.url}
                   onChange={(e) => setImages({ ...images, url: e.target.value })}
                 />
-                {images.file && (
+                {(images.file || images.url) && (
                   <div>
+                    <p>Preview:</p>
                     <img 
-                      src={URL.createObjectURL(images.file)} 
+                      src={images.file ? URL.createObjectURL(images.file) : images.url} 
                       alt="Preview" 
                       className={styles.imagePreview}
+                      onError={(e) => {
+                        e.target.style.display = 'none';
+                        e.target.nextSibling.style.display = 'block';
+                      }}
                     />
-                  </div>
-                )}
-                {images.url && !images.file && (
-                  <div>
-                    <img 
-                      src={images.url} 
-                      alt="Preview" 
-                      className={styles.imagePreview}
-                    />
+                    <div style={{ display: 'none', color: 'red' }}>
+                      Image failed to load. Please check the URL.
+                    </div>
                   </div>
                 )}
               </div>
@@ -561,14 +613,25 @@ export default function Home() {
                 
                 {block.images?.length > 0 && (
                   <div>
-                    {block.images.map((img, i) => (
-                      <img 
-                        key={i} 
-                        src={img.startsWith('/data/images/') ? img : img} 
-                        alt={`${block.title} image ${i + 1}`} 
-                        className={styles.imagePreview}
-                      />
-                    ))}
+                    {block.images.map((img, i) => {
+                      const displayUrl = getImageDisplayUrl(img);
+                      return (
+                        <div key={i}>
+                          <img 
+                            src={displayUrl} 
+                            alt={`${block.title} image ${i + 1}`} 
+                            className={styles.imagePreview}
+                            onError={(e) => {
+                              e.target.style.display = 'none';
+                              e.target.nextSibling.style.display = 'block';
+                            }}
+                          />
+                          <div style={{ display: 'none', color: 'red' }}>
+                            Image failed to load. Please check the URL: {displayUrl}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
                 
