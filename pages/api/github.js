@@ -1,28 +1,24 @@
-import fs from 'fs';
-import path from 'path';
-import { Octokit } from '@octokit/rest';
-
-const octokit = new Octokit({
-  auth: process.env.GITHUB_TOKEN
-});
-
-const owner = process.env.GITHUB_OWNER;
-const repo = process.env.GITHUB_REPO;
-const branch = process.env.GITHUB_BRANCH || 'main';
-
 export default async function handler(req, res) {
   if (req.method === 'GET') {
     try {
       const { path: filePath } = req.query;
       
-      const response = await octokit.repos.getContent({
-        owner,
-        repo,
-        path: filePath,
-        ref: branch
-      });
+      const response = await fetch(
+        `https://api.github.com/repos/${process.env.GITHUB_OWNER}/${process.env.GITHUB_REPO}/contents/${filePath}?ref=${process.env.GITHUB_BRANCH || 'main'}`,
+        {
+          headers: {
+            'Authorization': `token ${process.env.GITHUB_TOKEN}`,
+            'Accept': 'application/vnd.github.v3+json'
+          }
+        }
+      );
 
-      res.status(200).json(response.data);
+      if (!response.ok) {
+        throw new Error('Failed to fetch file from GitHub');
+      }
+
+      const data = await response.json();
+      res.status(200).json(data);
     } catch (error) {
       console.error('GitHub API error:', error);
       res.status(500).json({ error: 'Failed to fetch file from GitHub' });
@@ -34,28 +30,48 @@ export default async function handler(req, res) {
       // First try to get the file to check if it exists
       let sha;
       try {
-        const existingFile = await octokit.repos.getContent({
-          owner,
-          repo,
-          path: filePath,
-          ref: branch
-        });
-        sha = existingFile.data.sha;
+        const response = await fetch(
+          `https://api.github.com/repos/${process.env.GITHUB_OWNER}/${process.env.GITHUB_REPO}/contents/${filePath}?ref=${process.env.GITHUB_BRANCH || 'main'}`,
+          {
+            headers: {
+              'Authorization': `token ${process.env.GITHUB_TOKEN}`,
+              'Accept': 'application/vnd.github.v3+json'
+            }
+          }
+        );
+        
+        if (response.ok) {
+          const data = await response.json();
+          sha = data.sha;
+        }
       } catch (e) {
         // File doesn't exist, sha will be undefined
       }
 
-      const response = await octokit.repos.createOrUpdateFileContents({
-        owner,
-        repo,
-        path: filePath,
-        message: message || 'Update file',
-        content: Buffer.from(content).toString('base64'),
-        sha,
-        branch
-      });
+      const putResponse = await fetch(
+        `https://api.github.com/repos/${process.env.GITHUB_OWNER}/${process.env.GITHUB_REPO}/contents/${filePath}`,
+        {
+          method: 'PUT',
+          headers: {
+            'Authorization': `token ${process.env.GITHUB_TOKEN}`,
+            'Accept': 'application/vnd.github.v3+json',
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            message: message || 'Update file',
+            content: Buffer.from(content).toString('base64'),
+            sha,
+            branch: process.env.GITHUB_BRANCH || 'main'
+          })
+        }
+      );
 
-      res.status(200).json(response.data);
+      if (!putResponse.ok) {
+        throw new Error('Failed to update file on GitHub');
+      }
+
+      const data = await putResponse.json();
+      res.status(200).json(data);
     } catch (error) {
       console.error('GitHub API error:', error);
       res.status(500).json({ error: 'Failed to update file on GitHub' });
