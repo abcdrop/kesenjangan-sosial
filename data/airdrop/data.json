@@ -37,5 +37,19 @@
     "visibility": "show",
     "createdAt": "2025-05-04T03:58:45.222Z",
     "updatedAt": "2025-05-04T03:58:45.222Z"
+  },
+  {
+    "id": "1746331352526",
+    "title": "",
+    "steps": [],
+    "information": [],
+    "tags": [],
+    "sourceLinks": [],
+    "visibility": "show",
+    "createdAt": "2025-05-04T04:02:32.526Z",
+    "updatedAt": "2025-05-04T04:02:32.526Z",
+    "images": [
+      "https://splidejs.com/images/slides/image-slider/01.jpg"
+    ]
   }
 ]
