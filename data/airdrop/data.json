@@ -1,32 +1,5 @@
 [
   {
-    "id": "1746326199037",
-    "title": "tes",
-    "steps": [
-      {
-        "text": "satu",
-        "link": ""
-      },
-      {
-        "text": "dua",
-        "link": ""
-      }
-    ],
-    "information": [
-      "Ã°ÂÂ¤Â²Ã°ÂÂÂ»Ã°ÂÂÂÃ¢ÂÂ tes"
-    ],
-    "tags": [],
-    "sourceLinks": [
-      "https://x.com"
-    ],
-    "visibility": "show",
-    "createdAt": "2025-05-04T02:36:39.037Z",
-    "updatedAt": "2025-05-04T02:36:39.037Z",
-    "images": [
-      "/data/images/1000284114.jpg"
-    ]
-  },
-  {
     "id": "1746326325592",
     "title": "",
     "steps": [],
