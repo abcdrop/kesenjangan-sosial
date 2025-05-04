@@ -6,11 +6,11 @@ import { FiPlus, FiMinus, FiEdit, FiEye, FiEyeOff, FiTrash2, FiSave } from 'reac
 export default function Home() {
   const [blocks, setBlocks] = useState([]);
   const [title, setTitle] = useState('');
-  const [steps, setSteps] = useState([{ text: '', link: '' }]);
+  const [steps, setSteps] = useState([]);
   const [images, setImages] = useState({ file: null, url: '' });
   const [information, setInformation] = useState('');
   const [tags, setTags] = useState([]);
-  const [sourceLinks, setSourceLinks] = useState(['']);
+  const [sourceLinks, setSourceLinks] = useState([]);
   const [visibility, setVisibility] = useState('show');
   const [allTags, setAllTags] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -168,11 +168,11 @@ export default function Home() {
   // Reset form
   const resetForm = () => {
     setTitle('');
-    setSteps([{ text: '', link: '' }]);
+    setSteps([]);
     setImages({ file: null, url: '' });
     setInformation('');
     setTags([]);
-    setSourceLinks(['']);
+    setSourceLinks([]);
     setVisibility('show');
     setEditingId(null);
   };
@@ -182,11 +182,11 @@ export default function Home() {
     const block = blocks.find(b => b.id === id);
     if (block) {
       setTitle(block.title);
-      setSteps(block.steps.length > 0 ? block.steps : [{ text: '', link: '' }]);
+      setSteps(block.steps.length > 0 ? block.steps : []);
       setImages({ file: null, url: block.images?.[0] || '' });
       setInformation(block.information.join('\n'));
       setTags(block.tags || []);
-      setSourceLinks(block.sourceLinks.length > 0 ? block.sourceLinks : ['']);
+      setSourceLinks(block.sourceLinks.length > 0 ? block.sourceLinks : []);
       setVisibility(block.visibility || 'show');
       setEditingId(id);
     }
@@ -288,7 +288,8 @@ export default function Home() {
         <section className={styles.editorSection}>
           <h2 className="section-title">Editor</h2>
           
-          <div className={styles.controls}>
+          {/* Controls Row */}
+          <div className={styles.controlsRow}>
             <div className={styles.radioGroup}>
               <label className={styles.radioLabel}>
                 <input
@@ -309,153 +310,187 @@ export default function Home() {
                 /> Hide
               </label>
             </div>
-          </div>
 
-          <button className="button" onClick={() => setTitle('')}>
-            Add Title
-          </button>
-          {title === '' && (
-            <input
-              type="text"
-              className="input"
-              placeholder="Enter title"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-            />
-          )}
-
-          <button className="button" onClick={() => setSteps([...steps, { text: '', link: '' }])}>
-            Add Steps
-          </button>
-          {steps.map((step, index) => (
-            <div key={index} className={styles.stepItem}>
-              <input
-                type="text"
-                className="input"
-                placeholder={`Step ${index + 1} text`}
-                value={step.text}
-                onChange={(e) => updateStep(index, 'text', e.target.value)}
-              />
-              <input
-                type="text"
-                className="input"
-                placeholder={`Step ${index + 1} link (optional)`}
-                value={step.link}
-                onChange={(e) => updateStep(index, 'link', e.target.value)}
-              />
-            </div>
-          ))}
-          <div className={styles.stepControls}>
-            <button className="button secondary" onClick={addStep}>
-              <FiPlus /> Add Step
-            </button>
             <button 
-              className="button secondary" 
-              onClick={() => removeStep(steps.length - 1)}
-              disabled={steps.length <= 1}
+              className={`button ${title ? '' : 'active'}`} 
+              onClick={() => setTitle(title ? '' : 'Title Placeholder')}
             >
-              <FiMinus /> Remove Step
+              {title ? 'Cancel Title' : 'Add Title'}
+            </button>
+
+            <button 
+              className={`button ${steps.length ? '' : 'active'}`} 
+              onClick={() => setSteps(steps.length ? [] : [{ text: '', link: '' }])}
+            >
+              {steps.length ? 'Cancel Steps' : 'Add Steps'}
+            </button>
+
+            <button 
+              className={`button ${images.file || images.url ? '' : 'active'}`} 
+              onClick={() => setImages(images.file || images.url ? { file: null, url: '' } : { file: null, url: 'url-placeholder' })}
+            >
+              {images.file || images.url ? 'Cancel Image' : 'Add Image'}
+            </button>
+
+            <button 
+              className={`button ${information ? '' : 'active'}`} 
+              onClick={() => setInformation(information ? '' : 'placeholder')}
+            >
+              {information ? 'Cancel Info' : 'Add Info'}
+            </button>
+
+            <button 
+              className={`button ${tags.length ? '' : 'active'}`} 
+              onClick={() => setTags(tags.length ? [] : ['placeholder'])}
+            >
+              {tags.length ? 'Cancel Tags' : 'Add Tags'}
+            </button>
+
+            <button 
+              className={`button ${sourceLinks.length ? '' : 'active'}`} 
+              onClick={() => setSourceLinks(sourceLinks.length ? [] : ['placeholder'])}
+            >
+              {sourceLinks.length ? 'Cancel Sources' : 'Add Sources'}
             </button>
           </div>
 
-          <button className="button" onClick={() => setImages({ file: null, url: '' })}>
-            Add Image
-          </button>
-          <div>
-            <input
-              type="file"
-              accept="image/*"
-              onChange={handleImageUpload}
-              className="input"
-            />
-            <p>OR</p>
-            <input
-              type="text"
-              className="input"
-              placeholder="Image URL"
-              value={images.url}
-              onChange={(e) => setImages({ ...images, url: e.target.value })}
-            />
-            {images.file && (
-              <div>
-                <p>Preview:</p>
-                <img 
-                  src={URL.createObjectURL(images.file)} 
-                  alt="Preview" 
-                  className={styles.imagePreview}
+          {/* Input Fields */}
+          <div className={styles.inputFields}>
+            {!title && (
+              <input
+                type="text"
+                className="input"
+                placeholder="Enter title"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+              />
+            )}
+
+            {steps.length > 0 && steps.map((step, index) => (
+              <div key={index} className={styles.stepItem}>
+                <input
+                  type="text"
+                  className="input"
+                  placeholder={`Step ${index + 1} text`}
+                  value={step.text}
+                  onChange={(e) => updateStep(index, 'text', e.target.value)}
+                />
+                <input
+                  type="text"
+                  className="input"
+                  placeholder={`Step ${index + 1} link (optional)`}
+                  value={step.link}
+                  onChange={(e) => updateStep(index, 'link', e.target.value)}
                 />
               </div>
+            ))}
+            {steps.length > 0 && (
+              <div className={styles.stepControls}>
+                <button className="button secondary" onClick={addStep}>
+                  <FiPlus /> Add Step
+                </button>
+                <button 
+                  className="button secondary" 
+                  onClick={() => removeStep(steps.length - 1)}
+                  disabled={steps.length <= 1}
+                >
+                  <FiMinus /> Remove Step
+                </button>
+              </div>
             )}
-            {images.url && !images.file && (
+
+            {(!images.file && !images.url) && (
               <div>
-                <p>Preview:</p>
-                <img 
-                  src={images.url} 
-                  alt="Preview" 
-                  className={styles.imagePreview}
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageUpload}
+                  className="input"
                 />
+                <p>OR</p>
+                <input
+                  type="text"
+                  className="input"
+                  placeholder="Image URL"
+                  value={images.url}
+                  onChange={(e) => setImages({ ...images, url: e.target.value })}
+                />
+                {images.file && (
+                  <div>
+                    <p>Preview:</p>
+                    <img 
+                      src={URL.createObjectURL(images.file)} 
+                      alt="Preview" 
+                      className={styles.imagePreview}
+                    />
+                  </div>
+                )}
+                {images.url && !images.file && (
+                  <div>
+                    <p>Preview:</p>
+                    <img 
+                      src={images.url} 
+                      alt="Preview" 
+                      className={styles.imagePreview}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+
+            {!information && (
+              <textarea
+                className="textarea"
+                placeholder="Enter information (supports multiple lines)"
+                value={information}
+                onChange={(e) => setInformation(e.target.value)}
+              />
+            )}
+
+            {tags.length === 0 && allTags.length > 0 && (
+              <div className={styles.checkboxGroup}>
+                {allTags.map(tag => (
+                  <label key={tag} className={styles.checkboxLabel}>
+                    <input
+                      type="checkbox"
+                      className={styles.checkboxInput}
+                      checked={tags.includes(tag)}
+                      onChange={() => handleTagToggle(tag)}
+                    />
+                    {tag}
+                  </label>
+                ))}
+              </div>
+            )}
+
+            {sourceLinks.length > 0 && sourceLinks.map((link, index) => (
+              <div key={index} className={styles.sourceItem}>
+                <input
+                  type="text"
+                  className="input"
+                  placeholder={`Source link ${index + 1}`}
+                  value={link}
+                  onChange={(e) => updateSourceLink(index, e.target.value)}
+                />
+              </div>
+            ))}
+            {sourceLinks.length > 0 && (
+              <div className={styles.stepControls}>
+                <button className="button secondary" onClick={addSourceLink}>
+                  <FiPlus /> Add Source
+                </button>
+                <button 
+                  className="button secondary" 
+                  onClick={() => removeSourceLink(sourceLinks.length - 1)}
+                  disabled={sourceLinks.length <= 1}
+                >
+                  <FiMinus /> Remove Source
+                </button>
               </div>
             )}
           </div>
 
-          <button className="button" onClick={() => setInformation('')}>
-            Add Some Information
-          </button>
-          {information === '' && (
-            <textarea
-              className="textarea"
-              placeholder="Enter information (supports multiple lines)"
-              value={information}
-              onChange={(e) => setInformation(e.target.value)}
-            />
-          )}
-
-          <button className="button" onClick={() => setTags([])}>
-            Add Tags
-          </button>
-          {tags.length === 0 && allTags.length > 0 && (
-            <div className={styles.checkboxGroup}>
-              {allTags.map(tag => (
-                <label key={tag} className={styles.checkboxLabel}>
-                  <input
-                    type="checkbox"
-                    className={styles.checkboxInput}
-                    checked={tags.includes(tag)}
-                    onChange={() => handleTagToggle(tag)}
-                  />
-                  {tag}
-                </label>
-              ))}
-            </div>
-          )}
-
-          <button className="button" onClick={() => setSourceLinks([''])}>
-            Add Source Link
-          </button>
-          {sourceLinks[0] === '' && sourceLinks.map((link, index) => (
-            <div key={index} className={styles.sourceItem}>
-              <input
-                type="text"
-                className="input"
-                placeholder={`Source link ${index + 1}`}
-                value={link}
-                onChange={(e) => updateSourceLink(index, e.target.value)}
-              />
-            </div>
-          ))}
-          <div className={styles.stepControls}>
-            <button className="button secondary" onClick={addSourceLink}>
-              <FiPlus /> Add Source
-            </button>
-            <button 
-              className="button secondary" 
-              onClick={() => removeSourceLink(sourceLinks.length - 1)}
-              disabled={sourceLinks.length <= 1}
-            >
-              <FiMinus /> Remove Source
-            </button>
-          </div>
-
+          {/* Save Button */}
           <div className="mt-20">
             <button className="button" onClick={saveBlock}>
               <FiSave /> {editingId ? 'Update Block' : 'Save Block'}
