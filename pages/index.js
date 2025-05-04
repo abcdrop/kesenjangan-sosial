@@ -39,8 +39,7 @@ export default function Home() {
         const blocksRes = await fetch('/api/github?path=data/airdrop/data.json');
         const blocksData = await blocksRes.json();
         if (blocksData.content) {
-          const parsedBlocks = JSON.parse(atob(blocksData.content));
-          setBlocks(parsedBlocks);
+          setBlocks(JSON.parse(atob(blocksData.content)));
         }
 
         // Load tags data
@@ -115,6 +114,17 @@ export default function Home() {
     );
   };
 
+  // Get proper image URL
+  const getImageDisplayUrl = (imgPath) => {
+    if (!imgPath) return '';
+    // If already a full URL, return as-is
+    if (imgPath.startsWith('http')) {
+      return imgPath;
+    }
+    // Handle relative paths
+    return `https://raw.githubusercontent.com/${process.env.NEXT_PUBLIC_GITHUB_OWNER}/${process.env.NEXT_PUBLIC_GITHUB_REPO}/${process.env.NEXT_PUBLIC_GITHUB_BRANCH}/${imgPath}`.replace(/\s+/g, '');
+  };
+
   // Save/update block
   const saveBlock = async () => {
     const now = new Date().toISOString();
@@ -156,16 +166,14 @@ export default function Home() {
 
           const uploadData = await uploadRes.json();
           if (uploadRes.ok) {
-            blockData.images = [
-              `https://raw.githubusercontent.com/${process.env.NEXT_PUBLIC_GITHUB_OWNER}/${process.env.NEXT_PUBLIC_GITHUB_REPO}/${process.env.NEXT_PUBLIC_GITHUB_BRANCH}/data/images/${images.file.name}`
-            ];
+            blockData.images = [`data/images/${images.file.name}`];
             completeSave(blockData);
           } else {
             throw new Error(uploadData.error || 'Failed to upload image');
           }
         } catch (error) {
           console.error('Upload error:', error);
-          alert(`Gagal upload gambar: ${error.message}`);
+          alert(`Failed to upload image: ${error.message}`);
         }
       };
       reader.readAsDataURL(images.file);
@@ -178,12 +186,10 @@ export default function Home() {
   };
 
   const completeSave = async (blockData) => {
-    // Update or add block
     const updatedBlocks = editingId
       ? blocks.map(b => b.id === editingId ? blockData : b)
       : [...blocks, blockData];
 
-    // Save to GitHub
     try {
       const res = await fetch('/api/github', {
         method: 'POST',
@@ -203,7 +209,7 @@ export default function Home() {
       }
     } catch (error) {
       console.error('Error saving data:', error);
-      alert('Gagal menyimpan data. Silakan coba lagi.');
+      alert('Failed to save data. Please try again.');
     }
   };
 
@@ -218,7 +224,6 @@ export default function Home() {
     setVisibility('show');
     setEditingId(null);
     
-    // Hide all inputs
     setShowTitleInput(false);
     setShowStepsInput(false);
     setShowImageInput(false);
@@ -234,13 +239,10 @@ export default function Home() {
       setTitle(block.title);
       setSteps(block.steps.length > 0 ? block.steps : [{ text: '', link: '' }]);
       
-      // Handle image URL
       const imageUrl = block.images?.[0] || '';
       setImages({ 
         file: null, 
-        url: imageUrl.includes('data/images/')
-          ? `https://raw.githubusercontent.com/${process.env.NEXT_PUBLIC_GITHUB_OWNER}/${process.env.NEXT_PUBLIC_GITHUB_REPO}/${process.env.NEXT_PUBLIC_GITHUB_BRANCH}/${imageUrl}`
-          : imageUrl
+        url: imageUrl.startsWith('http') ? imageUrl : getImageDisplayUrl(imageUrl)
       });
       
       setInformation(block.information.join('\n'));
@@ -249,7 +251,6 @@ export default function Home() {
       setVisibility(block.visibility || 'show');
       setEditingId(id);
       
-      // Show relevant inputs
       setShowTitleInput(true);
       if (block.steps.length > 0) setShowStepsInput(true);
       if (block.images?.length > 0) setShowImageInput(true);
@@ -261,7 +262,7 @@ export default function Home() {
 
   // Delete block
   const deleteBlock = async (id) => {
-    if (confirm('Apakah Anda yakin ingin menghapus blok ini?')) {
+    if (confirm('Are you sure you want to delete this block?')) {
       const updatedBlocks = blocks.filter(b => b.id !== id);
       
       try {
@@ -283,7 +284,7 @@ export default function Home() {
         }
       } catch (error) {
         console.error('Error deleting block:', error);
-        alert('Gagal menghapus blok. Silakan coba lagi.');
+        alert('Failed to delete block. Please try again.');
       }
     }
   };
@@ -326,14 +327,6 @@ export default function Home() {
     return matchesSearch && matchesTags && matchesVisibility;
   });
 
-  // Function to get display URL for an image
-  const getImageDisplayUrl = (imgPath) => {
-    if (!imgPath) return '';
-    return imgPath.includes('data/images/')
-      ? `https://raw.githubusercontent.com/${process.env.NEXT_PUBLIC_GITHUB_OWNER}/${process.env.NEXT_PUBLIC_GITHUB_REPO}/${process.env.NEXT_PUBLIC_GITHUB_BRANCH}/${imgPath}`
-      : imgPath;
-  };
-
   return (
     <div className="container">
       <Head>
@@ -350,7 +343,6 @@ export default function Home() {
         <section className={styles.editorSection}>
           <h2 className="section-title">Editor</h2>
           
-          {/* Controls Row */}
           <div className={styles.controlsRow}>
             <div className={styles.radioGroup}>
               <label className={styles.radioLabel}>
@@ -416,7 +408,6 @@ export default function Home() {
             </button>
           </div>
 
-          {/* Input Fields */}
           <div className={styles.inputFields}>
             {showTitleInput && (
               <input
@@ -475,7 +466,7 @@ export default function Home() {
                 <input
                   type="text"
                   className="input"
-                  placeholder="Image URL (use GitHub raw URL)"
+                  placeholder="Image URL"
                   value={images.url}
                   onChange={(e) => setImages({ ...images, url: e.target.value })}
                 />
@@ -552,7 +543,6 @@ export default function Home() {
             )}
           </div>
 
-          {/* Save Button */}
           <div className="mt-20">
             <button className="button" onClick={saveBlock}>
               <FiSave /> {editingId ? 'Update Block' : 'Save Block'}
@@ -628,11 +618,11 @@ export default function Home() {
                 </div>
                 
                 {block.images?.length > 0 && (
-                  <div>
+                  <div className={styles.imageContainer}>
                     {block.images.map((img, i) => {
                       const displayUrl = getImageDisplayUrl(img);
                       return (
-                        <div key={i}>
+                        <div key={i} className={styles.imageWrapper}>
                           <img 
                             src={displayUrl} 
                             alt={`${block.title} image ${i + 1}`} 
@@ -642,8 +632,8 @@ export default function Home() {
                               e.target.nextSibling.style.display = 'block';
                             }}
                           />
-                          <div style={{ display: 'none', color: 'red' }}>
-                            Image failed to load. Please check the URL: {displayUrl}
+                          <div className={styles.imageError}>
+                            Image failed to load. Please check the URL.
                           </div>
                         </div>
                       );
