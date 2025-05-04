@@ -4,21 +4,34 @@ import styles from '../styles/Home.module.css';
 import { FiPlus, FiMinus, FiEdit, FiEye, FiEyeOff, FiTrash2, FiSave } from 'react-icons/fi';
 
 export default function Home() {
+  // Data states
   const [blocks, setBlocks] = useState([]);
+  const [allTags, setAllTags] = useState([]);
+  
+  // Editor content states
   const [title, setTitle] = useState('');
-  const [steps, setSteps] = useState([]);
+  const [steps, setSteps] = useState([{ text: '', link: '' }]);
   const [images, setImages] = useState({ file: null, url: '' });
   const [information, setInformation] = useState('');
   const [tags, setTags] = useState([]);
-  const [sourceLinks, setSourceLinks] = useState([]);
+  const [sourceLinks, setSourceLinks] = useState(['']);
   const [visibility, setVisibility] = useState('show');
-  const [allTags, setAllTags] = useState([]);
+  
+  // Editor UI states
+  const [showTitleInput, setShowTitleInput] = useState(false);
+  const [showStepsInput, setShowStepsInput] = useState(false);
+  const [showImageInput, setShowImageInput] = useState(false);
+  const [showInfoInput, setShowInfoInput] = useState(false);
+  const [showTagsInput, setShowTagsInput] = useState(false);
+  const [showSourcesInput, setShowSourcesInput] = useState(false);
+  
+  // Filter states
   const [searchTerm, setSearchTerm] = useState('');
   const [filterTags, setFilterTags] = useState([]);
   const [showHiddenOnly, setShowHiddenOnly] = useState(false);
   const [editingId, setEditingId] = useState(null);
 
-  // Load data on component mount
+  // Load initial data
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -43,12 +56,8 @@ export default function Home() {
     fetchData();
   }, []);
 
-  // Add a new step
-  const addStep = () => {
-    setSteps([...steps, { text: '', link: '' }]);
-  };
-
-  // Remove a step
+  // Step management
+  const addStep = () => setSteps([...steps, { text: '', link: '' }]);
   const removeStep = (index) => {
     if (steps.length > 1) {
       const newSteps = [...steps];
@@ -56,20 +65,14 @@ export default function Home() {
       setSteps(newSteps);
     }
   };
-
-  // Update step text or link
   const updateStep = (index, field, value) => {
     const newSteps = [...steps];
     newSteps[index][field] = value;
     setSteps(newSteps);
   };
 
-  // Add a new source link
-  const addSourceLink = () => {
-    setSourceLinks([...sourceLinks, '']);
-  };
-
-  // Remove a source link
+  // Source link management
+  const addSourceLink = () => setSourceLinks([...sourceLinks, '']);
   const removeSourceLink = (index) => {
     if (sourceLinks.length > 1) {
       const newLinks = [...sourceLinks];
@@ -77,29 +80,24 @@ export default function Home() {
       setSourceLinks(newLinks);
     }
   };
-
-  // Update source link
   const updateSourceLink = (index, value) => {
     const newLinks = [...sourceLinks];
     newLinks[index] = value;
     setSourceLinks(newLinks);
   };
 
-  // Handle image file upload
-  const handleImageUpload = (e) => {
-    setImages({ ...images, file: e.target.files[0] });
-  };
+  // Image handling
+  const handleImageUpload = (e) => setImages({ ...images, file: e.target.files[0] });
 
-  // Handle tag selection
+  // Tag handling
   const handleTagToggle = (tag) => {
-    if (tags.includes(tag)) {
-      setTags(tags.filter(t => t !== tag));
-    } else {
-      setTags([...tags, tag]);
-    }
+    setTags(tags.includes(tag) 
+      ? tags.filter(t => t !== tag) 
+      : [...tags, tag]
+    );
   };
 
-  // Save or update block
+  // Save/update block
   const saveBlock = async () => {
     const now = new Date().toISOString();
     
@@ -115,7 +113,7 @@ export default function Home() {
       updatedAt: now
     };
 
-    // Handle image upload if file is selected
+    // Handle image upload
     if (images.file) {
       const formData = new FormData();
       formData.append('file', images.file);
@@ -134,21 +132,16 @@ export default function Home() {
       blockData.images = [images.url];
     }
 
-    // Update or add the block
-    let updatedBlocks;
-    if (editingId) {
-      updatedBlocks = blocks.map(b => b.id === editingId ? blockData : b);
-    } else {
-      updatedBlocks = [...blocks, blockData];
-    }
+    // Update or add block
+    const updatedBlocks = editingId
+      ? blocks.map(b => b.id === editingId ? blockData : b)
+      : [...blocks, blockData];
 
     // Save to GitHub
     try {
       const res = await fetch('/api/github', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           path: 'data/airdrop/data.json',
           content: JSON.stringify(updatedBlocks, null, 2),
@@ -168,27 +161,43 @@ export default function Home() {
   // Reset form
   const resetForm = () => {
     setTitle('');
-    setSteps([]);
+    setSteps([{ text: '', link: '' }]);
     setImages({ file: null, url: '' });
     setInformation('');
     setTags([]);
-    setSourceLinks([]);
+    setSourceLinks(['']);
     setVisibility('show');
     setEditingId(null);
+    
+    // Hide all inputs
+    setShowTitleInput(false);
+    setShowStepsInput(false);
+    setShowImageInput(false);
+    setShowInfoInput(false);
+    setShowTagsInput(false);
+    setShowSourcesInput(false);
   };
 
-  // Edit block
+  // Edit existing block
   const editBlock = (id) => {
     const block = blocks.find(b => b.id === id);
     if (block) {
       setTitle(block.title);
-      setSteps(block.steps.length > 0 ? block.steps : []);
+      setSteps(block.steps.length > 0 ? block.steps : [{ text: '', link: '' }]);
       setImages({ file: null, url: block.images?.[0] || '' });
       setInformation(block.information.join('\n'));
       setTags(block.tags || []);
-      setSourceLinks(block.sourceLinks.length > 0 ? block.sourceLinks : []);
+      setSourceLinks(block.sourceLinks.length > 0 ? block.sourceLinks : ['']);
       setVisibility(block.visibility || 'show');
       setEditingId(id);
+      
+      // Show relevant inputs
+      setShowTitleInput(true);
+      if (block.steps.length > 0) setShowStepsInput(true);
+      if (block.images?.length > 0) setShowImageInput(true);
+      if (block.information.length > 0) setShowInfoInput(true);
+      if (block.tags?.length > 0) setShowTagsInput(true);
+      if (block.sourceLinks?.length > 0) setShowSourcesInput(true);
     }
   };
 
@@ -200,9 +209,7 @@ export default function Home() {
       try {
         const res = await fetch('/api/github', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             path: 'data/airdrop/data.json',
             content: JSON.stringify(updatedBlocks, null, 2),
@@ -212,9 +219,7 @@ export default function Home() {
 
         if (res.ok) {
           setBlocks(updatedBlocks);
-          if (editingId === id) {
-            resetForm();
-          }
+          if (editingId === id) resetForm();
         }
       } catch (error) {
         console.error('Error deleting block:', error);
@@ -222,7 +227,7 @@ export default function Home() {
     }
   };
 
-  // Toggle block visibility
+  // Toggle visibility
   const toggleVisibility = async (id) => {
     const updatedBlocks = blocks.map(b => {
       if (b.id === id) {
@@ -238,9 +243,7 @@ export default function Home() {
     try {
       const res = await fetch('/api/github', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           path: 'data/airdrop/data.json',
           content: JSON.stringify(updatedBlocks, null, 2),
@@ -248,26 +251,17 @@ export default function Home() {
         }),
       });
 
-      if (res.ok) {
-        setBlocks(updatedBlocks);
-      }
+      if (res.ok) setBlocks(updatedBlocks);
     } catch (error) {
       console.error('Error toggling visibility:', error);
     }
   };
 
-  // Filter blocks based on search and filters
+  // Filter blocks
   const filteredBlocks = blocks.filter(block => {
-    // Search by title
     const matchesSearch = block.title.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    // Filter by tags
-    const matchesTags = filterTags.length === 0 || 
-      filterTags.every(tag => block.tags?.includes(tag));
-    
-    // Show only hidden
+    const matchesTags = filterTags.length === 0 || filterTags.every(tag => block.tags?.includes(tag));
     const matchesVisibility = !showHiddenOnly || block.visibility === 'hide';
-    
     return matchesSearch && matchesTags && matchesVisibility;
   });
 
@@ -276,7 +270,6 @@ export default function Home() {
       <Head>
         <title>Airdrop Editor</title>
         <meta name="description" content="Airdrop content editor" />
-        <link rel="icon" href="/favicon.ico" />
       </Head>
 
       <header className="header">
@@ -312,51 +305,51 @@ export default function Home() {
             </div>
 
             <button 
-              className={`button ${title ? '' : 'active'}`} 
-              onClick={() => setTitle(title ? '' : 'Title Placeholder')}
+              className={`button ${showTitleInput ? 'active' : ''}`} 
+              onClick={() => setShowTitleInput(!showTitleInput)}
             >
-              {title ? 'Cancel Title' : 'Add Title'}
+              {showTitleInput ? 'Cancel Title' : 'Add Title'}
             </button>
 
             <button 
-              className={`button ${steps.length ? '' : 'active'}`} 
-              onClick={() => setSteps(steps.length ? [] : [{ text: '', link: '' }])}
+              className={`button ${showStepsInput ? 'active' : ''}`} 
+              onClick={() => setShowStepsInput(!showStepsInput)}
             >
-              {steps.length ? 'Cancel Steps' : 'Add Steps'}
+              {showStepsInput ? 'Cancel Steps' : 'Add Steps'}
             </button>
 
             <button 
-              className={`button ${images.file || images.url ? '' : 'active'}`} 
-              onClick={() => setImages(images.file || images.url ? { file: null, url: '' } : { file: null, url: 'url-placeholder' })}
+              className={`button ${showImageInput ? 'active' : ''}`} 
+              onClick={() => setShowImageInput(!showImageInput)}
             >
-              {images.file || images.url ? 'Cancel Image' : 'Add Image'}
+              {showImageInput ? 'Cancel Image' : 'Add Image'}
             </button>
 
             <button 
-              className={`button ${information ? '' : 'active'}`} 
-              onClick={() => setInformation(information ? '' : 'placeholder')}
+              className={`button ${showInfoInput ? 'active' : ''}`} 
+              onClick={() => setShowInfoInput(!showInfoInput)}
             >
-              {information ? 'Cancel Info' : 'Add Info'}
+              {showInfoInput ? 'Cancel Info' : 'Add Info'}
             </button>
 
             <button 
-              className={`button ${tags.length ? '' : 'active'}`} 
-              onClick={() => setTags(tags.length ? [] : ['placeholder'])}
+              className={`button ${showTagsInput ? 'active' : ''}`} 
+              onClick={() => setShowTagsInput(!showTagsInput)}
             >
-              {tags.length ? 'Cancel Tags' : 'Add Tags'}
+              {showTagsInput ? 'Cancel Tags' : 'Add Tags'}
             </button>
 
             <button 
-              className={`button ${sourceLinks.length ? '' : 'active'}`} 
-              onClick={() => setSourceLinks(sourceLinks.length ? [] : ['placeholder'])}
+              className={`button ${showSourcesInput ? 'active' : ''}`} 
+              onClick={() => setShowSourcesInput(!showSourcesInput)}
             >
-              {sourceLinks.length ? 'Cancel Sources' : 'Add Sources'}
+              {showSourcesInput ? 'Cancel Sources' : 'Add Sources'}
             </button>
           </div>
 
           {/* Input Fields */}
           <div className={styles.inputFields}>
-            {!title && (
+            {showTitleInput && (
               <input
                 type="text"
                 className="input"
@@ -366,40 +359,42 @@ export default function Home() {
               />
             )}
 
-            {steps.length > 0 && steps.map((step, index) => (
-              <div key={index} className={styles.stepItem}>
-                <input
-                  type="text"
-                  className="input"
-                  placeholder={`Step ${index + 1} text`}
-                  value={step.text}
-                  onChange={(e) => updateStep(index, 'text', e.target.value)}
-                />
-                <input
-                  type="text"
-                  className="input"
-                  placeholder={`Step ${index + 1} link (optional)`}
-                  value={step.link}
-                  onChange={(e) => updateStep(index, 'link', e.target.value)}
-                />
-              </div>
-            ))}
-            {steps.length > 0 && (
-              <div className={styles.stepControls}>
-                <button className="button secondary" onClick={addStep}>
-                  <FiPlus /> Add Step
-                </button>
-                <button 
-                  className="button secondary" 
-                  onClick={() => removeStep(steps.length - 1)}
-                  disabled={steps.length <= 1}
-                >
-                  <FiMinus /> Remove Step
-                </button>
-              </div>
+            {showStepsInput && (
+              <>
+                {steps.map((step, index) => (
+                  <div key={index} className={styles.stepItem}>
+                    <input
+                      type="text"
+                      className="input"
+                      placeholder={`Step ${index + 1} text`}
+                      value={step.text}
+                      onChange={(e) => updateStep(index, 'text', e.target.value)}
+                    />
+                    <input
+                      type="text"
+                      className="input"
+                      placeholder={`Step ${index + 1} link (optional)`}
+                      value={step.link}
+                      onChange={(e) => updateStep(index, 'link', e.target.value)}
+                    />
+                  </div>
+                ))}
+                <div className={styles.stepControls}>
+                  <button className="button secondary" onClick={addStep}>
+                    <FiPlus /> Add Step
+                  </button>
+                  <button 
+                    className="button secondary" 
+                    onClick={() => removeStep(steps.length - 1)}
+                    disabled={steps.length <= 1}
+                  >
+                    <FiMinus /> Remove Step
+                  </button>
+                </div>
+              </>
             )}
 
-            {(!images.file && !images.url) && (
+            {showImageInput && (
               <div>
                 <input
                   type="file"
@@ -417,7 +412,6 @@ export default function Home() {
                 />
                 {images.file && (
                   <div>
-                    <p>Preview:</p>
                     <img 
                       src={URL.createObjectURL(images.file)} 
                       alt="Preview" 
@@ -427,7 +421,6 @@ export default function Home() {
                 )}
                 {images.url && !images.file && (
                   <div>
-                    <p>Preview:</p>
                     <img 
                       src={images.url} 
                       alt="Preview" 
@@ -438,7 +431,7 @@ export default function Home() {
               </div>
             )}
 
-            {!information && (
+            {showInfoInput && (
               <textarea
                 className="textarea"
                 placeholder="Enter information (supports multiple lines)"
@@ -447,13 +440,12 @@ export default function Home() {
               />
             )}
 
-            {tags.length === 0 && allTags.length > 0 && (
+            {showTagsInput && allTags.length > 0 && (
               <div className={styles.checkboxGroup}>
                 {allTags.map(tag => (
                   <label key={tag} className={styles.checkboxLabel}>
                     <input
                       type="checkbox"
-                      className={styles.checkboxInput}
                       checked={tags.includes(tag)}
                       onChange={() => handleTagToggle(tag)}
                     />
@@ -463,30 +455,32 @@ export default function Home() {
               </div>
             )}
 
-            {sourceLinks.length > 0 && sourceLinks.map((link, index) => (
-              <div key={index} className={styles.sourceItem}>
-                <input
-                  type="text"
-                  className="input"
-                  placeholder={`Source link ${index + 1}`}
-                  value={link}
-                  onChange={(e) => updateSourceLink(index, e.target.value)}
-                />
-              </div>
-            ))}
-            {sourceLinks.length > 0 && (
-              <div className={styles.stepControls}>
-                <button className="button secondary" onClick={addSourceLink}>
-                  <FiPlus /> Add Source
-                </button>
-                <button 
-                  className="button secondary" 
-                  onClick={() => removeSourceLink(sourceLinks.length - 1)}
-                  disabled={sourceLinks.length <= 1}
-                >
-                  <FiMinus /> Remove Source
-                </button>
-              </div>
+            {showSourcesInput && (
+              <>
+                {sourceLinks.map((link, index) => (
+                  <div key={index} className={styles.sourceItem}>
+                    <input
+                      type="text"
+                      className="input"
+                      placeholder={`Source link ${index + 1}`}
+                      value={link}
+                      onChange={(e) => updateSourceLink(index, e.target.value)}
+                    />
+                  </div>
+                ))}
+                <div className={styles.stepControls}>
+                  <button className="button secondary" onClick={addSourceLink}>
+                    <FiPlus /> Add Source
+                  </button>
+                  <button 
+                    className="button secondary" 
+                    onClick={() => removeSourceLink(sourceLinks.length - 1)}
+                    disabled={sourceLinks.length <= 1}
+                  >
+                    <FiMinus /> Remove Source
+                  </button>
+                </div>
+              </>
             )}
           </div>
 
@@ -530,10 +524,9 @@ export default function Home() {
               <select
                 multiple
                 value={filterTags}
-                onChange={(e) => {
-                  const options = Array.from(e.target.selectedOptions, option => option.value);
-                  setFilterTags(options);
-                }}
+                onChange={(e) => setFilterTags(
+                  Array.from(e.target.selectedOptions, option => option.value)
+                )}
                 className="input"
               >
                 {allTags.map(tag => (
