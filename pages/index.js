@@ -115,7 +115,7 @@ export default function Home() {
     );
   };
 
-  // Save/update block with fixed image URL formatting
+  // Save/update block
   const saveBlock = async () => {
     const now = new Date().toISOString();
     
@@ -136,7 +136,7 @@ export default function Home() {
       updatedAt: now
     };
 
-    // Handle image upload with proper URL formatting
+    // Handle image upload
     if (images.file) {
       const reader = new FileReader();
       reader.onloadend = async () => {
@@ -156,9 +156,8 @@ export default function Home() {
 
           const uploadData = await uploadRes.json();
           if (uploadRes.ok) {
-            // Fixed URL construction without spaces
             blockData.images = [
-              `https://raw.githubusercontent.com/${process.env.NEXT_PUBLIC_GITHUB_OWNER}/${process.env.NEXT_PUBLIC_GITHUB_REPO}/${process.env.NEXT_PUBLIC_GITHUB_BRANCH}/data/images/${images.file.name}`.replace(/\s+/g, '')
+              `https://raw.githubusercontent.com/${process.env.NEXT_PUBLIC_GITHUB_OWNER}/${process.env.NEXT_PUBLIC_GITHUB_REPO}/${process.env.NEXT_PUBLIC_GITHUB_BRANCH}/data/images/${images.file.name}`
             ];
             completeSave(blockData);
           } else {
@@ -166,7 +165,7 @@ export default function Home() {
           }
         } catch (error) {
           console.error('Upload error:', error);
-          alert(`Failed to upload image: ${error.message}`);
+          alert(`Gagal upload gambar: ${error.message}`);
         }
       };
       reader.readAsDataURL(images.file);
@@ -204,7 +203,7 @@ export default function Home() {
       }
     } catch (error) {
       console.error('Error saving data:', error);
-      alert('Failed to save data. Please try again.');
+      alert('Gagal menyimpan data. Silakan coba lagi.');
     }
   };
 
@@ -228,19 +227,19 @@ export default function Home() {
     setShowSourcesInput(false);
   };
 
-  // Edit existing block with fixed image URL handling
+  // Edit existing block
   const editBlock = (id) => {
     const block = blocks.find(b => b.id === id);
     if (block) {
       setTitle(block.title);
       setSteps(block.steps.length > 0 ? block.steps : [{ text: '', link: '' }]);
       
-      // Handle image URL with proper formatting
+      // Handle image URL
       const imageUrl = block.images?.[0] || '';
       setImages({ 
         file: null, 
         url: imageUrl.includes('data/images/')
-          ? `https://raw.githubusercontent.com/${process.env.NEXT_PUBLIC_GITHUB_OWNER}/${process.env.NEXT_PUBLIC_GITHUB_REPO}/${process.env.NEXT_PUBLIC_GITHUB_BRANCH}/${imageUrl}`.replace(/\s+/g, '')
+          ? `https://raw.githubusercontent.com/${process.env.NEXT_PUBLIC_GITHUB_OWNER}/${process.env.NEXT_PUBLIC_GITHUB_REPO}/${process.env.NEXT_PUBLIC_GITHUB_BRANCH}/${imageUrl}`
           : imageUrl
       });
       
@@ -262,7 +261,7 @@ export default function Home() {
 
   // Delete block
   const deleteBlock = async (id) => {
-    if (confirm('Are you sure you want to delete this block?')) {
+    if (confirm('Apakah Anda yakin ingin menghapus blok ini?')) {
       const updatedBlocks = blocks.filter(b => b.id !== id);
       
       try {
@@ -284,7 +283,7 @@ export default function Home() {
         }
       } catch (error) {
         console.error('Error deleting block:', error);
-        alert('Failed to delete block. Please try again.');
+        alert('Gagal menghapus blok. Silakan coba lagi.');
       }
     }
   };
@@ -327,12 +326,11 @@ export default function Home() {
     return matchesSearch && matchesTags && matchesVisibility;
   });
 
-  // Fixed getImageDisplayUrl function
+  // Function to get display URL for an image
   const getImageDisplayUrl = (imgPath) => {
     if (!imgPath) return '';
-    // Ensure no spaces in URL construction
     return imgPath.includes('data/images/')
-      ? `https://raw.githubusercontent.com/${process.env.NEXT_PUBLIC_GITHUB_OWNER}/${process.env.NEXT_PUBLIC_GITHUB_REPO}/${process.env.NEXT_PUBLIC_GITHUB_BRANCH}/${imgPath}`.replace(/\s+/g, '')
+      ? `https://raw.githubusercontent.com/${process.env.NEXT_PUBLIC_GITHUB_OWNER}/${process.env.NEXT_PUBLIC_GITHUB_REPO}/${process.env.NEXT_PUBLIC_GITHUB_BRANCH}/${imgPath}`
       : imgPath;
   };
 
@@ -607,7 +605,7 @@ export default function Home() {
           )}
         </section>
 
-        {/* Preview Section with fixed image URLs */}
+        {/* Preview Section */}
         <section className={styles.previewSection}>
           <h2 className="section-title">Preview ({filteredBlocks.length} blocks)</h2>
           
@@ -653,7 +651,80 @@ export default function Home() {
                   </div>
                 )}
                 
-                {/* [Rest of the preview section remains the same...] */}
+                {block.steps?.length > 0 && (
+                  <div className="mb-20">
+                    <h4>Steps:</h4>
+                    <ol>
+                      {block.steps.map((step, i) => (
+                        <li key={i}>
+                          {step.text}
+                          {step.link && (
+                            <a href={step.link} target="_blank" rel="noopener noreferrer">
+                              [Link]
+                            </a>
+                          )}
+                        </li>
+                      ))}
+                    </ol>
+                  </div>
+                )}
+                
+                {block.information?.length > 0 && (
+                  <div className="mb-20">
+                    <h4>Information:</h4>
+                    {block.information.map((line, i) => (
+                      <p key={i}>{line}</p>
+                    ))}
+                  </div>
+                )}
+                
+                {block.tags?.length > 0 && (
+                  <div className="mb-20">
+                    <h4>Tags:</h4>
+                    <div className="flex">
+                      {block.tags.map(tag => (
+                        <span key={tag} className="tag">{tag}</span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                
+                {block.sourceLinks?.length > 0 && (
+                  <div className="mb-20">
+                    <h4>Source Links:</h4>
+                    <ul>
+                      {block.sourceLinks.map((link, i) => (
+                        <li key={i}>
+                          <a href={link} target="_blank" rel="noopener noreferrer">
+                            {link}
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                
+                <div className={styles.cardControls}>
+                  <button 
+                    className="button secondary" 
+                    onClick={() => toggleVisibility(block.id)}
+                  >
+                    {block.visibility === 'show' ? <FiEyeOff /> : <FiEye />} 
+                    {block.visibility === 'show' ? 'Hide' : 'Show'}
+                  </button>
+                  <button 
+                    className="button secondary" 
+                    onClick={() => editBlock(block.id)}
+                  >
+                    <FiEdit /> Edit
+                  </button>
+                  <button 
+                    className="button danger" 
+                    onClick={() => deleteBlock(block.id)}
+                  >
+                    <FiTrash2 /> Delete
+                  </button>
+                </div>
               </div>
             ))
           )}
