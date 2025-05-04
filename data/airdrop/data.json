@@ -9,5 +9,32 @@
     "visibility": "show",
     "createdAt": "2025-05-04T02:33:38.372Z",
     "updatedAt": "2025-05-04T02:33:38.372Z"
+  },
+  {
+    "id": "1746326199037",
+    "title": "tes",
+    "steps": [
+      {
+        "text": "satu",
+        "link": ""
+      },
+      {
+        "text": "dua",
+        "link": ""
+      }
+    ],
+    "information": [
+      "🤲🏻😂☕ tes"
+    ],
+    "tags": [],
+    "sourceLinks": [
+      "https://x.com"
+    ],
+    "visibility": "show",
+    "createdAt": "2025-05-04T02:36:39.037Z",
+    "updatedAt": "2025-05-04T02:36:39.037Z",
+    "images": [
+      "/data/images/1000284114.jpg"
+    ]
   }
 ]
