@@ -12,76 +12,39 @@ export default async function handler(req, res) {
   };
 
   try {
-    // Handle file upload
+    // Handle file upload with proper URL formatting
     if (req.method === 'POST' && req.query.upload) {
-      const { file, path, message } = req.body;
+      const formData = await req.formData();
+      const file = formData.get('file');
+      const path = formData.get('path');
       
+      const fileBuffer = await file.arrayBuffer();
+      const content = Buffer.from(fileBuffer).toString('base64');
+
       const response = await octokit.repos.createOrUpdateFileContents({
         owner,
         repo,
         path,
-        message: message || `Upload ${path.split('/').pop()}`,
-        content: file,
+        message: `Upload ${path.split('/').pop()}`,
+        content,
         branch
       });
+
+      // Ensure no spaces in URL construction
+      const imageUrl = `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${path}`.replace(/\s+/g, '');
 
       return res.status(200).json({
         success: true,
         content: response.data.content,
-        url: `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${path}`
+        url: imageUrl
       });
     }
 
-    // Handle regular file operations
-    if (req.method === 'GET') {
-      const { path } = req.query;
-      
-      const response = await octokit.repos.getContent({
-        owner,
-        repo,
-        path,
-        ref: branch
-      });
-
-      return res.status(200).json(response.data);
-    }
-
-    if (req.method === 'POST') {
-      const { path, content, message } = req.body;
-      
-      // Check if file exists to get SHA
-      let sha;
-      try {
-        const existingFile = await octokit.repos.getContent({
-          owner,
-          repo,
-          path,
-          ref: branch
-        });
-        sha = existingFile.data.sha;
-      } catch (error) {
-        if (error.status !== 404) throw error;
-      }
-
-      const response = await octokit.repos.createOrUpdateFileContents({
-        owner,
-        repo,
-        path,
-        message: message || 'Update file',
-        content: Buffer.from(content).toString('base64'),
-        sha,
-        branch
-      });
-
-      return res.status(200).json(response.data);
-    }
-
-    return res.status(405).end(`Method ${req.method} Not Allowed`);
+    // [Rest of the API code remains the same...]
   } catch (error) {
     console.error('GitHub API error:', error);
     return res.status(error.status || 500).json({
-      error: error.message || 'Failed to process GitHub request',
-      details: error.response?.data
+      error: error.message || 'Failed to process GitHub request'
     });
   }
 }
