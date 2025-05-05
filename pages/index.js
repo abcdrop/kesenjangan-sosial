@@ -8,7 +8,7 @@ export default function Home() {
   const [allTags, setAllTags] = useState([]);
   const [title, setTitle] = useState('');
   const [steps, setSteps] = useState([{ text: '', link: '' }]);
-  const [images, setImages] = useState({ file: null, url: '' });
+  const [images, setImages] = useState([{ file: null, url: '' }]);
   const [information, setInformation] = useState('');
   const [tags, setTags] = useState([]);
   const [sourceLinks, setSourceLinks] = useState(['']);
@@ -70,6 +70,7 @@ export default function Home() {
     return `https://raw.githubusercontent.com/${process.env.NEXT_PUBLIC_GITHUB_OWNER}/${process.env.NEXT_PUBLIC_GITHUB_REPO}/${branch}/${imgPath}`.replace(/\s+/g, '');
   };
 
+  // Steps management
   const addStep = () => setSteps([...steps, { text: '', link: '' }]);
   const removeStep = (index) => {
     if (steps.length > 1) {
@@ -84,6 +85,30 @@ export default function Home() {
     setSteps(newSteps);
   };
 
+  // Images management
+  const addImage = () => setImages([...images, { file: null, url: '' }]);
+  const removeImage = (index) => {
+    if (images.length > 1) {
+      const newImages = [...images];
+      newImages.splice(index, 1);
+      setImages(newImages);
+    }
+  };
+  const updateImage = (index, field, value) => {
+    const newImages = [...images];
+    newImages[index][field] = value;
+    setImages(newImages);
+  };
+  const handleImageUpload = (e, index) => {
+    if (e.target.files && e.target.files[0]) {
+      const newImages = [...images];
+      newImages[index].file = e.target.files[0];
+      newImages[index].url = '';
+      setImages(newImages);
+    }
+  };
+
+  // Sources management
   const addSourceLink = () => setSourceLinks([...sourceLinks, '']);
   const removeSourceLink = (index) => {
     if (sourceLinks.length > 1) {
@@ -98,12 +123,7 @@ export default function Home() {
     setSourceLinks(newLinks);
   };
 
-  const handleImageUpload = (e) => {
-    if (e.target.files && e.target.files[0]) {
-      setImages({ ...images, file: e.target.files[0], url: '' });
-    }
-  };
-
+  // Tags management
   const handleTagToggle = (tag) => {
     setTags(tags.includes(tag) ? tags.filter(t => t !== tag) : [...tags, tag]);
   };
@@ -115,6 +135,40 @@ export default function Home() {
     }
 
     const now = new Date().toISOString();
+    const uploadedImages = [];
+    
+    // Upload all images
+    for (const img of images) {
+      if (img.file) {
+        try {
+          const base64Data = await new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result.split(',')[1]);
+            reader.readAsDataURL(img.file);
+          });
+
+          const fileName = img.file.name.replace(/\s+/g, '-').toLowerCase();
+          const uploadRes = await fetch('/api/github?upload=true', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              file: base64Data,
+              path: `data/images/${fileName}`,
+              message: `Upload image ${fileName}`
+            }),
+          });
+
+          if (uploadRes.ok) {
+            uploadedImages.push(`data/images/${fileName}`);
+          }
+        } catch (error) {
+          console.error('Upload error:', error);
+        }
+      } else if (img.url.trim() !== '') {
+        uploadedImages.push(img.url);
+      }
+    }
+
     const blockData = {
       id: editingId || Date.now().toString(),
       title: encodeText(title),
@@ -127,42 +181,11 @@ export default function Home() {
         .map(line => encodeText(line)),
       tags,
       sourceLinks: sourceLinks.filter(link => link.trim() !== ''),
+      images: uploadedImages,
       visibility,
       createdAt: editingId ? blocks.find(b => b.id === editingId)?.createdAt || now : now,
       updatedAt: now
     };
-
-    if (images.file) {
-      const reader = new FileReader();
-      reader.onloadend = async () => {
-        const base64Data = reader.result.split(',')[1];
-        try {
-          const uploadRes = await fetch('/api/github?upload=true', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              file: base64Data,
-              path: `data/images/${images.file.name}`,
-              message: `Upload image ${images.file.name}`
-            }),
-          });
-
-          if (uploadRes.ok) {
-            blockData.images = [`data/images/${images.file.name}`];
-            completeSave(blockData);
-          } else {
-            throw new Error('Failed to upload image');
-          }
-        } catch (error) {
-          console.error('Upload error:', error);
-          alert(`Failed to upload image: ${error.message}`);
-        }
-      };
-      reader.readAsDataURL(images.file);
-      return;
-    } else if (images.url.trim() !== '') {
-      blockData.images = [images.url];
-    }
 
     completeSave(blockData);
   };
@@ -198,7 +221,7 @@ export default function Home() {
   const resetForm = () => {
     setTitle('');
     setSteps([{ text: '', link: '' }]);
-    setImages({ file: null, url: '' });
+    setImages([{ file: null, url: '' }]);
     setInformation('');
     setTags([]);
     setSourceLinks(['']);
@@ -217,11 +240,13 @@ export default function Home() {
     if (block) {
       setTitle(block.title);
       setSteps(block.steps.length > 0 ? block.steps : [{ text: '', link: '' }]);
-      const imageUrl = block.images?.[0] || '';
-      setImages({ 
-        file: null, 
-        url: imageUrl.startsWith('http') ? imageUrl : getImageDisplayUrl(imageUrl)
-      });
+      setImages(block.images?.length > 0 
+        ? block.images.map(img => ({ 
+            file: null, 
+            url: img.startsWith('http') ? img : getImageDisplayUrl(img)
+          }))
+        : [{ file: null, url: '' }]
+      );
       setInformation(block.information.join('\n'));
       setTags(block.tags || []);
       setSourceLinks(block.sourceLinks.length > 0 ? block.sourceLinks : ['']);
@@ -354,7 +379,7 @@ export default function Home() {
               className={`button ${showImageInput ? 'active' : ''}`} 
               onClick={() => setShowImageInput(!showImageInput)}
             >
-              {showImageInput ? 'Cancel Image' : 'Add Image'}
+              {showImageInput ? 'Cancel Images' : 'Add Images'}
             </button>
 
             <button 
@@ -426,39 +451,59 @@ export default function Home() {
             )}
 
             {showImageInput && (
-              <div>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleImageUpload}
-                  className="input"
-                />
-                <p>OR</p>
-                <input
-                  type="text"
-                  className="input"
-                  placeholder="Image URL"
-                  value={images.url}
-                  onChange={(e) => setImages({ ...images, url: e.target.value })}
-                />
-                {(images.file || images.url) && (
-                  <div>
-                    <p>Preview:</p>
-                    <img 
-                      src={images.file ? URL.createObjectURL(images.file) : images.url} 
-                      alt="Preview" 
-                      className={styles.imagePreview}
-                      onError={(e) => {
-                        e.target.style.display = 'none';
-                        e.target.nextSibling.style.display = 'block';
-                      }}
+              <>
+                {images.map((img, index) => (
+                  <div key={index} className={styles.imageInputContainer}>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => handleImageUpload(e, index)}
+                      className="input"
                     />
-                    <div style={{ display: 'none', color: 'red' }}>
-                      Image failed to load. Please check the URL.
+                    <p className={styles.imageOrText}>OR</p>
+                    <input
+                      type="text"
+                      className="input"
+                      placeholder="Image URL"
+                      value={img.url}
+                      onChange={(e) => updateImage(index, 'url', e.target.value)}
+                    />
+                    {(img.file || img.url) && (
+                      <div className={styles.imagePreviewContainer}>
+                        <img 
+                          src={img.file ? URL.createObjectURL(img.file) : img.url} 
+                          alt="Preview" 
+                          className={styles.imagePreview}
+                          onLoad={(e) => {
+                            e.target.nextSibling.style.display = 'none';
+                          }}
+                          onError={(e) => {
+                            e.target.style.display = 'none';
+                            e.target.nextSibling.style.display = 'block';
+                          }}
+                        />
+                        <div className={styles.imageError} style={{ display: 'none' }}>
+                          Image failed to load. Please check the URL.
+                        </div>
+                      </div>
+                    )}
+                    <div className={styles.imageControls}>
+                      <button 
+                        className="button secondary" 
+                        onClick={() => removeImage(index)}
+                        disabled={images.length <= 1}
+                      >
+                        <FiMinus /> Remove
+                      </button>
+                      {index === images.length - 1 && (
+                        <button className="button secondary" onClick={addImage}>
+                          <FiPlus /> Add Image
+                        </button>
+                      )}
                     </div>
                   </div>
-                )}
-              </div>
+                ))}
+              </>
             )}
 
             {showInfoInput && (
@@ -596,12 +641,15 @@ export default function Home() {
                             src={displayUrl} 
                             alt={`${block.title} image ${i + 1}`} 
                             className={styles.imagePreview}
+                            onLoad={(e) => {
+                              e.target.nextSibling.style.display = 'none';
+                            }}
                             onError={(e) => {
                               e.target.style.display = 'none';
                               e.target.nextSibling.style.display = 'block';
                             }}
                           />
-                          <div className={styles.imageError}>
+                          <div className={styles.imageError} style={{ display: 'none' }}>
                             Image failed to load. Please check the URL.
                           </div>
                         </div>
