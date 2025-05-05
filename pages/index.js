@@ -33,11 +33,18 @@ export default function Home() {
       try {
         const blocksRes = await fetch('/api/github?path=data/airdrop/data.json');
         const blocksData = await blocksRes.json();
-        if (blocksData.content) setBlocks(JSON.parse(atob(blocksData.content)));
+        if (blocksData.content) {
+          // Decode base64 and parse with UTF-8 support
+          const decodedContent = decodeURIComponent(escape(atob(blocksData.content)));
+          setBlocks(JSON.parse(decodedContent));
+        }
 
         const tagsRes = await fetch('/api/github?path=data/tags/tags.json');
         const tagsData = await tagsRes.json();
-        if (tagsData.content) setAllTags(JSON.parse(atob(tagsData.content)));
+        if (tagsData.content) {
+          const decodedTags = decodeURIComponent(escape(atob(tagsData.content)));
+          setAllTags(JSON.parse(decodedTags));
+        }
       } catch (error) {
         console.error('Error loading data:', error);
         setMessage('❌ Failed to load data');
@@ -48,16 +55,9 @@ export default function Home() {
     fetchData();
   }, []);
 
+  // Modified to preserve all special characters and emojis
   const encodeText = (text) => {
-    return text
-      .replace(/\\/g, '\\\\')
-      .replace(/"/g, '\\"')
-      .replace(/\n/g, '\\n')
-      .replace(/\r/g, '\\r')
-      .replace(/\t/g, '\\t')
-      .replace(/[\u007F-\uFFFF]/g, (chr) => {
-        return "\\u" + ("0000" + chr.charCodeAt(0).toString(16)).substr(-4);
-      });
+    return text;
   };
 
   const getImageDisplayUrl = (imgPath) => {
@@ -190,14 +190,14 @@ export default function Home() {
 
     const blockData = {
       id: editingId || Date.now().toString(),
-      title: encodeText(title),
+      title: title, // No encoding needed as we'll handle UTF-8 in JSON.stringify
       steps: steps.filter(step => step.text.trim() !== '').map(step => ({
-        text: encodeText(step.text),
+        text: step.text, // Preserve original text
         link: step.link
       })),
       information: information.split('\n')
         .filter(line => line.trim() !== '')
-        .map(line => encodeText(line)),
+        .map(line => line), // Preserve original line
       tags,
       sourceLinks: sourceLinks.filter(link => link.trim() !== ''),
       images: uploadedImages,
@@ -215,12 +215,19 @@ export default function Home() {
       : [...blocks, blockData];
 
     try {
+      // Convert to JSON with UTF-8 support
+      const jsonContent = JSON.stringify(updatedBlocks, null, 2);
+      
+      // Encode to base64 with UTF-8 support
+      const utf8Content = unescape(encodeURIComponent(jsonContent));
+      const base64Content = btoa(utf8Content);
+
       const res = await fetch('/api/github', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           path: 'data/airdrop/data.json',
-          content: JSON.stringify(updatedBlocks, null, 2),
+          content: base64Content,
           message: editingId ? `Update block ${editingId}` : 'Add new block'
         }),
       });
@@ -263,9 +270,9 @@ export default function Home() {
           }))
         : [{ file: null, url: '' }]
       );
-      setInformation(block.information.join('\n'));
+      setInformation(block.information?.join('\n') || '');
       setTags(block.tags || []);
-      setSourceLinks(block.sourceLinks.length > 0 ? block.sourceLinks : ['']);
+      setSourceLinks(block.sourceLinks?.length > 0 ? block.sourceLinks : ['']);
       setVisibility(block.visibility || 'show');
       setEditingId(id);
     }
@@ -276,12 +283,17 @@ export default function Home() {
       setIsLoading(true);
       const updatedBlocks = blocks.filter(b => b.id !== id);
       try {
+        // Convert to JSON with UTF-8 support
+        const jsonContent = JSON.stringify(updatedBlocks, null, 2);
+        const utf8Content = unescape(encodeURIComponent(jsonContent));
+        const base64Content = btoa(utf8Content);
+
         const res = await fetch('/api/github', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             path: 'data/airdrop/data.json',
-            content: JSON.stringify(updatedBlocks, null, 2),
+            content: base64Content,
             message: `Delete block ${id}`
           }),
         });
@@ -316,12 +328,17 @@ export default function Home() {
     });
 
     try {
+      // Convert to JSON with UTF-8 support
+      const jsonContent = JSON.stringify(updatedBlocks, null, 2);
+      const utf8Content = unescape(encodeURIComponent(jsonContent));
+      const base64Content = btoa(utf8Content);
+
       const res = await fetch('/api/github', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           path: 'data/airdrop/data.json',
-          content: JSON.stringify(updatedBlocks, null, 2),
+          content: base64Content,
           message: `Toggle visibility for block ${id}`
         }),
       });
