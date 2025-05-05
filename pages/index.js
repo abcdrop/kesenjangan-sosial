@@ -4,11 +4,8 @@ import styles from '../styles/Home.module.css';
 import { FiPlus, FiMinus, FiEdit, FiEye, FiEyeOff, FiTrash2, FiSave } from 'react-icons/fi';
 
 export default function Home() {
-  // Data states
   const [blocks, setBlocks] = useState([]);
   const [allTags, setAllTags] = useState([]);
-  
-  // Editor content states
   const [title, setTitle] = useState('');
   const [steps, setSteps] = useState([{ text: '', link: '' }]);
   const [images, setImages] = useState({ file: null, url: '' });
@@ -16,47 +13,40 @@ export default function Home() {
   const [tags, setTags] = useState([]);
   const [sourceLinks, setSourceLinks] = useState(['']);
   const [visibility, setVisibility] = useState('show');
-  
-  // Editor UI states
   const [showTitleInput, setShowTitleInput] = useState(false);
   const [showStepsInput, setShowStepsInput] = useState(false);
   const [showImageInput, setShowImageInput] = useState(false);
   const [showInfoInput, setShowInfoInput] = useState(false);
   const [showTagsInput, setShowTagsInput] = useState(false);
   const [showSourcesInput, setShowSourcesInput] = useState(false);
-  
-  // Filter states
   const [searchTerm, setSearchTerm] = useState('');
   const [filterTags, setFilterTags] = useState([]);
   const [showHiddenOnly, setShowHiddenOnly] = useState(false);
   const [editingId, setEditingId] = useState(null);
 
-  // Load initial data
+  useEffect(() => {
+    if (!process.env.NEXT_PUBLIC_GITHUB_OWNER || !process.env.NEXT_PUBLIC_GITHUB_REPO) {
+      console.error('Missing required GitHub environment variables');
+    }
+  }, []);
+
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Load blocks data
         const blocksRes = await fetch('/api/github?path=data/airdrop/data.json');
         const blocksData = await blocksRes.json();
-        if (blocksData.content) {
-          setBlocks(JSON.parse(atob(blocksData.content)));
-        }
+        if (blocksData.content) setBlocks(JSON.parse(atob(blocksData.content)));
 
-        // Load tags data
         const tagsRes = await fetch('/api/github?path=data/tags/tags.json');
         const tagsData = await tagsRes.json();
-        if (tagsData.content) {
-          setAllTags(JSON.parse(atob(tagsData.content)));
-        }
+        if (tagsData.content) setAllTags(JSON.parse(atob(tagsData.content)));
       } catch (error) {
         console.error('Error loading data:', error);
       }
     };
-
     fetchData();
   }, []);
 
-  // Helper function to encode text
   const encodeText = (text) => {
     return text
       .replace(/\\/g, '\\\\')
@@ -69,7 +59,17 @@ export default function Home() {
       });
   };
 
-  // Step management
+  const getImageDisplayUrl = (imgPath) => {
+    if (!imgPath) return '';
+    if (imgPath.startsWith('http')) return imgPath;
+    if (!process.env.NEXT_PUBLIC_GITHUB_OWNER || !process.env.NEXT_PUBLIC_GITHUB_REPO) {
+      console.error('GitHub repository details not configured');
+      return '';
+    }
+    const branch = process.env.NEXT_PUBLIC_GITHUB_BRANCH || 'main';
+    return `https://raw.githubusercontent.com/${process.env.NEXT_PUBLIC_GITHUB_OWNER}/${process.env.NEXT_PUBLIC_GITHUB_REPO}/${branch}/${imgPath}`.replace(/\s+/g, '');
+  };
+
   const addStep = () => setSteps([...steps, { text: '', link: '' }]);
   const removeStep = (index) => {
     if (steps.length > 1) {
@@ -84,7 +84,6 @@ export default function Home() {
     setSteps(newSteps);
   };
 
-  // Source link management
   const addSourceLink = () => setSourceLinks([...sourceLinks, '']);
   const removeSourceLink = (index) => {
     if (sourceLinks.length > 1) {
@@ -99,36 +98,23 @@ export default function Home() {
     setSourceLinks(newLinks);
   };
 
-  // Image handling
   const handleImageUpload = (e) => {
     if (e.target.files && e.target.files[0]) {
-      setImages({ ...images, file: e.target.files[0] });
+      setImages({ ...images, file: e.target.files[0], url: '' });
     }
   };
 
-  // Tag handling
   const handleTagToggle = (tag) => {
-    setTags(tags.includes(tag) 
-      ? tags.filter(t => t !== tag) 
-      : [...tags, tag]
-    );
+    setTags(tags.includes(tag) ? tags.filter(t => t !== tag) : [...tags, tag]);
   };
 
-  // Get proper image URL
-  const getImageDisplayUrl = (imgPath) => {
-    if (!imgPath) return '';
-    // If already a full URL, return as-is
-    if (imgPath.startsWith('http')) {
-      return imgPath;
-    }
-    // Handle relative paths
-    return `https://raw.githubusercontent.com/${process.env.NEXT_PUBLIC_GITHUB_OWNER}/${process.env.NEXT_PUBLIC_GITHUB_REPO}/${process.env.NEXT_PUBLIC_GITHUB_BRANCH}/${imgPath}`.replace(/\s+/g, '');
-  };
-
-  // Save/update block
   const saveBlock = async () => {
+    if (!title.trim()) {
+      alert('Please enter a title');
+      return;
+    }
+
     const now = new Date().toISOString();
-    
     const blockData = {
       id: editingId || Date.now().toString(),
       title: encodeText(title),
@@ -146,7 +132,6 @@ export default function Home() {
       updatedAt: now
     };
 
-    // Handle image upload
     if (images.file) {
       const reader = new FileReader();
       reader.onloadend = async () => {
@@ -154,9 +139,7 @@ export default function Home() {
         try {
           const uploadRes = await fetch('/api/github?upload=true', {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               file: base64Data,
               path: `data/images/${images.file.name}`,
@@ -164,12 +147,11 @@ export default function Home() {
             }),
           });
 
-          const uploadData = await uploadRes.json();
           if (uploadRes.ok) {
             blockData.images = [`data/images/${images.file.name}`];
             completeSave(blockData);
           } else {
-            throw new Error(uploadData.error || 'Failed to upload image');
+            throw new Error('Failed to upload image');
           }
         } catch (error) {
           console.error('Upload error:', error);
@@ -213,7 +195,6 @@ export default function Home() {
     }
   };
 
-  // Reset form
   const resetForm = () => {
     setTitle('');
     setSteps([{ text: '', link: '' }]);
@@ -223,7 +204,6 @@ export default function Home() {
     setSourceLinks(['']);
     setVisibility('show');
     setEditingId(null);
-    
     setShowTitleInput(false);
     setShowStepsInput(false);
     setShowImageInput(false);
@@ -232,25 +212,21 @@ export default function Home() {
     setShowSourcesInput(false);
   };
 
-  // Edit existing block
   const editBlock = (id) => {
     const block = blocks.find(b => b.id === id);
     if (block) {
       setTitle(block.title);
       setSteps(block.steps.length > 0 ? block.steps : [{ text: '', link: '' }]);
-      
       const imageUrl = block.images?.[0] || '';
       setImages({ 
         file: null, 
         url: imageUrl.startsWith('http') ? imageUrl : getImageDisplayUrl(imageUrl)
       });
-      
       setInformation(block.information.join('\n'));
       setTags(block.tags || []);
       setSourceLinks(block.sourceLinks.length > 0 ? block.sourceLinks : ['']);
       setVisibility(block.visibility || 'show');
       setEditingId(id);
-      
       setShowTitleInput(true);
       if (block.steps.length > 0) setShowStepsInput(true);
       if (block.images?.length > 0) setShowImageInput(true);
@@ -260,11 +236,9 @@ export default function Home() {
     }
   };
 
-  // Delete block
   const deleteBlock = async (id) => {
     if (confirm('Are you sure you want to delete this block?')) {
       const updatedBlocks = blocks.filter(b => b.id !== id);
-      
       try {
         const res = await fetch('/api/github', {
           method: 'POST',
@@ -289,7 +263,6 @@ export default function Home() {
     }
   };
 
-  // Toggle visibility
   const toggleVisibility = async (id) => {
     const updatedBlocks = blocks.map(b => {
       if (b.id === id) {
@@ -319,7 +292,6 @@ export default function Home() {
     }
   };
 
-  // Filter blocks
   const filteredBlocks = blocks.filter(block => {
     const matchesSearch = block.title.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesTags = filterTags.length === 0 || filterTags.every(tag => block.tags?.includes(tag));
@@ -339,7 +311,6 @@ export default function Home() {
       </header>
 
       <main className="main">
-        {/* Editor Section */}
         <section className={styles.editorSection}>
           <h2 className="section-title">Editor</h2>
           
@@ -555,7 +526,6 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Search and Filter Section */}
         <section className={styles.searchFilter}>
           <input
             type="text"
@@ -595,7 +565,6 @@ export default function Home() {
           )}
         </section>
 
-        {/* Preview Section */}
         <section className={styles.previewSection}>
           <h2 className="section-title">Preview ({filteredBlocks.length} blocks)</h2>
           
