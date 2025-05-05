@@ -5,6 +5,13 @@ const octokit = new Octokit({
 });
 
 export default async function handler(req, res) {
+  if (!process.env.GITHUB_OWNER || !process.env.GITHUB_REPO || !process.env.GITHUB_TOKEN) {
+    return res.status(500).json({
+      error: 'Server misconfiguration',
+      message: 'GitHub credentials not provided'
+    });
+  }
+
   const { owner, repo, branch } = {
     owner: process.env.GITHUB_OWNER,
     repo: process.env.GITHUB_REPO,
@@ -12,7 +19,6 @@ export default async function handler(req, res) {
   };
 
   try {
-    // Handle file upload
     if (req.method === 'POST' && req.query.upload) {
       const { file, path, message } = req.body;
       
@@ -32,7 +38,6 @@ export default async function handler(req, res) {
       });
     }
 
-    // Handle regular file operations
     if (req.method === 'GET') {
       const { path } = req.query;
       
@@ -49,7 +54,6 @@ export default async function handler(req, res) {
     if (req.method === 'POST') {
       const { path, content, message } = req.body;
       
-      // Check if file exists to get SHA
       let sha;
       try {
         const existingFile = await octokit.repos.getContent({
@@ -80,7 +84,7 @@ export default async function handler(req, res) {
   } catch (error) {
     console.error('GitHub API error:', error);
     return res.status(error.status || 500).json({
-      error: error.message || 'Failed to process GitHub request',
+      error: error.message || 'GitHub API request failed',
       details: error.response?.data
     });
   }
