@@ -5,7 +5,7 @@
     "steps": [
       {
         "text": "satu",
-        "link": "x.com"
+        "link": "https://x.com"
       },
       {
         "text": "dua",
@@ -18,6 +18,6 @@
     "images": [],
     "visibility": "show",
     "createdAt": "2025-05-05T09:46:09.412Z",
-    "updatedAt": "2025-05-05T09:46:09.412Z"
+    "updatedAt": "2025-05-05T09:46:39.981Z"
   }
 ]
