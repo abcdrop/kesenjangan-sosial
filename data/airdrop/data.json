@@ -1,26 +1,5 @@
 [
   {
-    "id": "1746433526080",
-    "title": "Tes",
-    "steps": [
-      {
-        "text": "satu",
-        "link": "https://sisipan.com"
-      }
-    ],
-    "information": [
-      "kopi \\u2615",
-      "okeh"
-    ],
-    "tags": [
-      "Wallet"
-    ],
-    "sourceLinks": [],
-    "visibility": "show",
-    "createdAt": "2025-05-05T08:25:26.076Z",
-    "updatedAt": "2025-05-05T08:25:26.076Z"
-  },
-  {
     "id": "1746433752016",
     "title": "yap",
     "steps": [],
