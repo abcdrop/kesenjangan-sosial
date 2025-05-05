@@ -2,7 +2,7 @@
 const nextConfig = {
   reactStrictMode: true,
   images: {
-    domains: ['localhost'], // Add your domain here for production
+    domains: ['localhost', 'raw.githubusercontent.com'],
   },
 };
 
