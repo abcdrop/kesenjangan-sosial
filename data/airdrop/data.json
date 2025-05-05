@@ -47,5 +47,19 @@
     "images": [
       "data/images/1000284195.jpg"
     ]
+  },
+  {
+    "id": "1746435891229",
+    "title": "Yaps",
+    "steps": [],
+    "information": [],
+    "tags": [],
+    "sourceLinks": [],
+    "images": [
+      "data/images/1000284368.png"
+    ],
+    "visibility": "show",
+    "createdAt": "2025-05-05T09:04:42.320Z",
+    "updatedAt": "2025-05-05T09:04:42.320Z"
   }
 ]
